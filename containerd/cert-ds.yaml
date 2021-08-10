@@ -1,0 +1,75 @@
+# Copyright 2019 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: cert-daemonset
+spec:
+  selector:
+    matchLabels:
+      k8s-app: cert-daemonset
+  template:
+    metadata:
+      annotations:
+      labels:
+        k8s-app: cert-daemonset
+    spec:
+      initContainers:
+      - image: gcr.io/gcp-runtimes/ubuntu_16_0_4
+        name: init
+        command: ["/etc/scripts/entrypoint.sh"]
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+          privileged: true
+        volumeMounts:
+        - mountPath: /mnt/etc
+          name: etc
+        - mountPath: /registry
+          name: registry-cert
+          readOnly: true
+        - mountPath: /etc/config
+          name: containerd-config
+          readOnly: true
+        - mountPath: /etc/scripts
+          name: entrypoint
+      hostNetwork: true
+      hostPID: true
+      volumes:
+      - hostPath:
+          path: /etc
+        name: etc
+      - name: registry-cert
+        secret:
+          secretName: artifactory-pem
+          defaultMode: 420
+      - name: containerd-config
+        configMap:
+          name: entrypoint
+          defaultMode: 0744
+          items:
+          - key: custom_config.toml
+            path: custom_config.toml
+      - name: entrypoint
+        configMap:
+          name: entrypoint
+          defaultMode: 0744
+          items:
+          - key: entrypoint.sh
+            path: entrypoint.sh
+      containers:
+      - image: gcr.io/google-containers/pause:3.2
+        name: pause

@@ -1,0 +1,50 @@
+# Copyright 2019 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: entrypoint
+  labels:
+    app: default-init
+data:
+  custom_config.toml: |
+    [plugins.cri.registry.mirrors."registry.mycompany.com"]
+      endpoint = ["https://registry.mycompany.com"]
+    [plugins.cri.registry.configs."registry.mycompany.com".tls]
+      ca_file = "/etc/custom-certs/cert.pem"
+  entrypoint.sh: |
+    #!/usr/bin/env bash
+
+    set -euo pipefail
+    export REGISTRY_FQDN=registry.mycompany.com
+
+    echo "Deleting the custom certificate file if it exists"
+    rm -rf /mnt/etc/custom-certs
+    mkdir /mnt/etc/custom-certs
+    
+    echo "Copying the custom certificate"
+    cp /registry/cert.pem /mnt/etc/custom-certs/cert.pem
+
+    echo "Checking if the custom config is already applied"
+    if ! grep -q $REGISTRY_FQDN /mnt/etc/containerd/config.toml; then
+      echo "Appending the custom config to the end of the config file"
+      cat /etc/config/custom_config.toml >> /mnt/etc/containerd/config.toml
+      cat /mnt/etc/containerd/config.toml
+
+      echo "restaring containerd"  
+      nsenter --target 1 --mount systemctl restart containerd
+    else
+      echo "skiped applying the custom config"
+    fi
