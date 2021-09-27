@@ -51,7 +51,7 @@ spec:
         name: etc
       - name: registry-cert
         secret:
-          secretName: artifactory-pem
+          secretName: registry-pem
           defaultMode: 420
       - name: entrypoint
         configMap:
