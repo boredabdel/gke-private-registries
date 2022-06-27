@@ -41,6 +41,11 @@ data:
     if ! grep -q $REGISTRY_FQDN /mnt/etc/containerd/config.toml; then
       echo "Appending the custom config to the end of the config file"
       cat /etc/config/custom_config.toml >> /mnt/etc/containerd/config.toml
+      
+      if grep -q 'plugins."io.containerd.grpc.v1.cri".registry' /mnt/etc/containerd/config.toml; then
+        sed -i 's@plugins.cri.registry@plugins."io.containerd.grpc.v1.cri".registry@' /mnt/etc/containerd/config.toml
+      fi
+      
       cat /mnt/etc/containerd/config.toml
 
       echo "restaring containerd"  
